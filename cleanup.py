@@ -3,6 +3,15 @@ import re
 import subprocess
 import shutil
 
+#Logging
+import logging
+logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
+# Log format
+#logging.debug('This message should go to the log file')
+#logging.info('So should this')
+#logging.warning('And this, too')
+
+
 
 def clean(initial_directory, shortened_files_directory, wav_files_directory, reprocessed_files, results_json_directory):
 #------- Deletes All Files in Start & Cut_WAV_Dir ----------------------------------
@@ -29,7 +38,7 @@ def clean(initial_directory, shortened_files_directory, wav_files_directory, rep
 
 def remove_all_files_in_directory(directory):
     if not os.path.isdir(directory):
-        print("Directory does not exist")
+        log.warning("Directory does not exist")
         return
 
     for i in os.listdir(directory):
@@ -38,7 +47,7 @@ def remove_all_files_in_directory(directory):
 
 def copy_file(src, dest):
     if not os.path.isfile(src):
-        print("file does not exist")
+        log.warning("file does not exist")
         return
 
     shutil.copy2(src, dest)

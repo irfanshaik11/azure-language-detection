@@ -9,6 +9,14 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 #This file is a video indexer API
 
+import logging
+logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
+#Log format
+#logging.debug('This message should go to the log file')
+#logging.info('So should this')
+#logging.warning('And this, too')
+
+
 class Video_Upload_API():
 
     def __init__(self, account_id, subscription_key, account_type="trial"):
@@ -31,13 +39,13 @@ class Video_Upload_API():
 
         url = '{0}/AccessToken'.format(self.API_AUTH_URL)
 
-        print("calling: " + url)
+        logging.info("calling: " + url)
 
         response = requests.get(url, headers=headers, params=querystring, verify=False)
         self.access_token = response.text.replace('"', '')
 
         if len(self.access_token):
-            print("Retrieved Access Token")
+            logging.info("Retrieved Access Token")
 
         return self.access_token
 
@@ -66,16 +74,16 @@ class Video_Upload_API():
         f = open(file_path, 'rb')
         files = {'file': f}
         headers = {'Host': 'api.videoindexer.ai'}
-        print("Calling request to upload video ... " + file_path)
+        logging.info("Calling request to upload video ... " + file_path)
         response = requests.post(upload_video_url, files=files, headers=headers, verify=False)
-        print("Sent request for ... " + file_path)
+        logging.info("Sent request for ... " + file_path)
 
         if response.ok:
-            print("Uploaded video ... determining status")
+            logging.info("Uploaded video ... determining status")
             self.check_upload_status(response.json()["id"])
         else:
-            print("error: ")
-            print(response.json())
+            logging.info("error: ")
+            logging.info(response.json())
             #self.check_upload_status(response.json()['id'])
         if "id" in response.json().keys():
             return response.json()["id"] #returns video id
@@ -90,7 +98,7 @@ class Video_Upload_API():
                                                                          self.access_token)
 
             while True:
-                print("Waiting for " + str(upload_id) + " to finish indexing")
+                logging.info("Waiting for " + str(upload_id) + " to finish indexing")
                 time.sleep(2)
                 response = requests.get(progress_url, verify=False)
 
@@ -98,36 +106,36 @@ class Video_Upload_API():
                     print(response.json()['state'])
 
                     if response.json()['state'] == 'Failed':
-                        print("Failed to upload video. Please try re-uploading")
+                        logging.info("Failed to upload video. Please try re-uploading")
                         break
 
                     if response.json()['state'] == 'Processed':
                         return 0
-                        print("*" * 10)
-                        print("The source language is: ")
+                        logging.info("*" * 10)
+                        logging.info("The source language is: ")
                         result['lang'] = response.json()['videos'][0]['sourceLanguage']
-                        print(result['lang'])
+                        logging.info(result['lang'])
 
                         response = requests.get(progress_url, verify=False)
 
-                        print(response.json()['videos'][0]['insights'].keys())
+                        logging.info(response.json()['videos'][0]['insights'].keys())
                         if 'sourceLanguageConfidence' in response.json()['videos'][0]['insights'].keys():
                             result['level'] = response.json()['videos'][0]['insights']['sourceLanguageConfidence']
-                            print("Source Language Confidence is: " + str(
+                            logging.info("Source Language Confidence is: " + str(
                                 response.json()['videos'][0]['insights']['sourceLanguageConfidence']))
                         else:
-                            print("Language confidence could not be determined.")
+                            logging.info("Language confidence could not be determined.")
                             result['level'] = "Unknown"
 
                         break
                 else:
-                    print("State could not be found for " + upload_id + " " + str(response.json().keys()['Message']))
+                    logging.info("State could not be found for " + upload_id + " " + str(response.json().keys()['Message']))
 
             return result
 
     def get_language(self, video_id = None): ## deprecated use new_get_language
         if video_id == None:
-            print("Error")
+            logging.info("Error")
             return 1
         if not self.access_token:
             self.get_access_token()
@@ -135,8 +143,8 @@ class Video_Upload_API():
         my_url = "https://api.videoindexer.ai/{0}/Accounts/{1}/Videos/{2}/Index?accessToken={3}&language=English".format(location, self.account_id, video_id, self.access_token)
         response = requests.get(my_url, verify=False)
         if(response.status_code != 200):
-            print("Error Number: " + str(response.status_code))
-            print(response.json())
+            logging.info("Error Number: " + str(response.status_code))
+            logging.info(response.json())
 
         x = response.json()
         language = x["videos"][0]["insights"]["sourceLanguage"]
@@ -146,7 +154,7 @@ class Video_Upload_API():
         else:
             confidence = None
 
-        print("language: " + str(language) + "\naccuracy: " + str(confidence))
+        logging.info("language: " + str(language) + "\naccuracy: " + str(confidence))
 
 
         return language,confidence
@@ -185,7 +193,7 @@ class Video_Upload_API():
 
     def new_get_language(self, video_id = None):
         if video_id == None:
-            print("Error")
+            logging.debug("Error")
             return 1
         if not self.access_token:
             self.get_access_token()
@@ -222,7 +230,7 @@ class Video_Upload_API():
         for file in os.listdir(directory):
             if str(file) not in D2:
                 video_path = directory + "/" + str(file)
-                print("Uploading  " + str(file))
+                logging.info("Uploading  " + str(file))
                 threads.append(threading.Thread(target=self.upload_video_file, args=(str(file),video_path)))
 
         for i in threads:
@@ -241,12 +249,12 @@ class Video_Upload_API():
         accessToken = self.access_token
         for i in arr:
             videoId = i
-            print("Deleting " + videoId)
+            logging.info("Deleting " + videoId)
             req = requests.delete(
                 "https://api.videoindexer.ai/{0}/Accounts/{1}/Videos/{2}?accessToken={3}".format(location, accountId,
                                                                                                  videoId, accessToken))
 
             if str(req.status_code) != str(204):
-                print("Failed to Delete " + videoId)
+                logging.warning("Failed to Delete " + videoId)
                 
         return 0

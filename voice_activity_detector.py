@@ -2,6 +2,14 @@ import numpy as np
 import scipy.io.wavfile as wf
 import matplotlib.pyplot as plt
 
+import logging
+logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
+#Log format
+#logging.debug('This message should go to the log file')
+#logging.info('So should this')
+#logging.warning('And this, too')
+
+
 class VoiceActivityDetector():
     """ Use signal energy to detect voice activity in wav file """
     
