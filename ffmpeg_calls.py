@@ -1,16 +1,24 @@
 import subprocess
 import os
 
+import logging
+logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
+# Log format
+#logging.debug('This message should go to the log file')
+#logging.info('So should this')
+#logging.warning('And this, too')
+
+
 def retrieve_len(filepath):
-    print("Retrieving length for " + filepath)
+    logging.info("Retrieving length for " + filepath)
     temp = float(subprocess.check_output(["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(filepath)]))
     return int(temp)
 
 def create_shortened_file(cutpoints_file_directory, target_directory, outputfile, cutpoints_filename="cutpoints.txt"):
     cutpoints_filepath = cutpoints_file_directory + "/" + cutpoints_filename
     output_filepath = target_directory + "/" + outputfile
-    print("Ran command")
-    print("ffmpeg -f concat -i "+ cutpoints_filepath + " " + output_filepath + " -y")
+    loggingog.info("Ran command")
+    logging.info("ffmpeg -f concat -i "+ cutpoints_filepath + " " + output_filepath + " -y")
     subprocess.check_output(["ffmpeg", "-f", "concat", "-i", cutpoints_filepath, output_filepath, "-y"])
 
 def dump_streams_metadata(filepath, WAV_directory):

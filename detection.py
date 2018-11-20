@@ -12,6 +12,15 @@ import os.path
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# setup log file
+import logging
+logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
+# Log format
+#logging.debug('This message should go to the log file')
+#logging.info('So should this')
+#logging.warning('And this, too')
+
+
 initial_directory = "./S3-Files" #directory containing mp4 files to be processed
 shortened_files_directory = "./Wav-Clips" #directory containing files to be uploaded to azure
 wav_files_directory = "./Wav-Encoded"
@@ -52,17 +61,17 @@ def get_confidence_by_random_segment():
 
 def retrieve_confidence(id, filename):
     #----- Retrieves Confidence For All Files Uploaded
-    print("Getting confidence for file: " + filename + " id: " + id)
+    logging.info("Getting confidence for file: " + filename + " id: " + id)
     
     language, confidence, response_json = VI_API.new_get_language(str(id))
 
-    print("File: " + filename + " language: " + str(language) + " confidence: " + str(confidence))
+    logging.info("File: " + filename + " language: " + str(language) + " confidence: " + str(confidence))
     
     ## -------- Reuploads video using a 5 min segment comprising random 20 second samples if the confidence is too low ----------------------
     cnt = 2
     try:
         if confidence < 0.50:
-            print("Low confidence score, redoing processing -- this will take ~10 mins")
+            logging.info("Low confidence score, redoing processing -- this will take ~10 mins")
             #Get the full audio filename corresponding to the clip
             stream_number = str(filename.split("_")[1][-1])
             encoded_file_name = stream_number + "output.wav"
@@ -77,7 +86,7 @@ def retrieve_confidence(id, filename):
             if file_length > MINIMUM_FILE_LENGTH_THRESHOLD:
                 # Take the shorter length
                 temp_cut_size = min(file_length, 2400)
-                print("Going to cut " + str(temp_cut_size) + " from the file")
+                logging.info("Going to cut " + str(temp_cut_size) + " from the file")
 
                 #random_startpoint = random.randint(60, int(file_length - (temp_cut_size + 10)))
 
@@ -89,8 +98,8 @@ def retrieve_confidence(id, filename):
                 cutpoints_file = open(wav_files_directory + "/" + "cutpoints_random_sample.txt", "w")
                 num_cuts = int(MINIMUM_FILE_LENGTH_THRESHOLD / len(arr))
 
-                print("Number of cuts")
-                print(num_cuts)
+                logging.info("Number of cuts " + str(num_cuts))
+
 
                 for i in range(len(arr)):
                     cutpoints_file.write("file " + str(encoded_file_name) + "\n")
@@ -99,7 +108,7 @@ def retrieve_confidence(id, filename):
 
                 cutpoints_file.close()
 
-                print("Trying to create the shortened file from the cutpoints")
+                logging.info("Trying to create the shortened file from the cutpoints")
                 ffmpeg_calls.create_shortened_file(wav_files_directory, reprocessed_files_directory, filename, "cutpoints_random_sample.txt")
 
                 temp_id = VI_API.upload_video_file(filename, reprocessed_files_directory + "/" + filename)
@@ -115,9 +124,9 @@ def retrieve_confidence(id, filename):
                         VI_API.clean_index([temp_id])
 
         
-        print("Writing the results to json ... ")
+        logging.info("Writing the results to json ... ")
         write_json_to_file(response_json, detection_results_json_directory + "/" + filename.split(".")[0] + ".json")
-        print("Wrote result to: " + detection_results_json_directory + "/" + filename.split(".")[0] + ".json")
+        logging.info("Wrote result to: " + detection_results_json_directory + "/" + filename.split(".")[0] + ".json")
         
         return {
             "streamName": filename, 
@@ -139,8 +148,8 @@ def do_pre_processing():
         AUDIO_DETECTOR.pre_process_video_file(file)  ##ff is the name of the shortened file
         return True
     except Exception as e:
-        print("Audio Detection Failed")
-        print(e)
+        logging.debug("Audio Detection Failed")
+        logging.debug(e)
         return False
 
 def index_audio_clips(original_input_file, clip_directory):
@@ -164,7 +173,7 @@ def index_audio_clips(original_input_file, clip_directory):
             indexed_files[i] = Dict_of_filenames[i]
         
     if indexed_files.keys() == []:
-        print("Could not find the Indexed Files we just uploaded!!")
+        logging.warning("Could not find the Indexed Files we just uploaded!!")
         return {}
 
     return indexed_files
@@ -173,22 +182,22 @@ def do_detection(inputfile):   #call with the name of the file (eg "test.mp4")
     results = []
 
     if not os.path.isfile(initial_directory + "/" + inputfile):
-        print("FILE "  + initial_directory + "/" + inputfile + " DOES NOT EXIST!")
+        logging.info("FILE "  + initial_directory + "/" + inputfile + " DOES NOT EXIST!")
         return []
 
     # ------------- Creates a Shortened Version of Initial File --------------------------
     try:
         AUDIO_DETECTOR.pre_process_video_file(inputfile)  ##ff is the name of the shortened file
     except Exception as e:
-        print("Audio Detection Failed")
-        print(e)
+        logging.debug("Audio Detection Failed")
+        logging.debug(e)
         return []
 
     try:
         relevant_files = index_audio_clips(inputfile, shortened_files_directory)
     except Exception as e:
-        print("Indexing phase failed because of error ")
-        print(e)
+        logging.debug("Indexing phase failed because of error ")
+        logging.debug(e)
         return results
 
     # --------------------- Prints Confidence for Every Written File ----------------------
@@ -204,7 +213,7 @@ def do_detection(inputfile):   #call with the name of the file (eg "test.mp4")
         for id in relevant_files.keys():
             # print("Getting confidence for file " + relevant_files[id])
             threads.append(pool.apply_async(retrieve_confidence, (str(id), relevant_files[id],)))
-        print(threads)
+        logging.info(threads)
         results = [r.get() for r in threads]
         pool.close()
         pool.join()
@@ -214,8 +223,8 @@ def do_detection(inputfile):   #call with the name of the file (eg "test.mp4")
         try:
             clean_all_directories()
         except Exception as e:
-            print("failed to delete all files")
+            logging.debug("failed to delete all files")
             print e
 
-    print("results " + str(results))
+    logging.info("results " + str(results))
     return results

@@ -9,6 +9,13 @@ import cleanup
 
 import ffmpeg_calls
 
+import logging
+logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
+#Log format
+#logging.debug('This message should go to the log file')
+#logging.info('So should this')
+#logging.warning('And this, too')
+
 class Audio_Detector():
     def __init__(self, initial_directory, targetdirectory, wav_directory):
         self.initial_directory = initial_directory
@@ -25,8 +32,8 @@ class Audio_Detector():
             try:
                 ffmpeg_calls.dump_streams_metadata(sourcefile, self.wav_directory)
             except Exception as e:
-                print("Could not create streams.txt file")
-                print(e)
+                logging.debug("Could not create streams.txt file")
+                logging.debug(e)
                 raise Exception
 
             # ---------- Finds number of Streams by Reading Streams.txt file ----------------------
@@ -47,7 +54,7 @@ class Audio_Detector():
 
             threads = []
             if detected_streams == []:
-                print("No Audio Streams Found")
+                logging.warning("No Audio Streams Found")
                 raise Exception
 
         elif filetype=="wav":
@@ -66,12 +73,12 @@ class Audio_Detector():
             if outfile == None:
                 threads.append(threading.Thread(target=ffmpeg_calls.shorten_file, args=(self.wav_directory,starttime, sourcefile, cuttosize, i)))
                 # ffmpeg_calls.shorten_file(starttime, destination_file, cuttosize, i)
-                print(i + "output.wav created in " + self.wav_directory)
+                logging.info(i + "output.wav created in " + self.wav_directory)
                 outputarrs.append(self.wav_directory + "/" + str(i) + "output" + ".wav")
             else:
                 threads.append(threading.Thread(target=ffmpeg_calls.shorten_file_with_specified_outfile, args=(starttime, sourcefile, cuttosize, i, outfile)))
                 # ffmpeg_calls.shorten_file_with_specified_outfile(starttime, destination_file, cuttosize, i, outfile)
-                print(outfile + " created")
+                logging.info(outfile + " created")
 
         for i in threads:
             i.start()
@@ -93,23 +100,23 @@ class Audio_Detector():
             file.write("inpoint " + str(arr[i]-num_cuts) + "\n")
             file.write("outpoint " + str(arr[i]) + "\n")
         file.close()
-        print("created text file with cutpoints")
+        logging.info("created text file with cutpoints")
         return 0
         
     def create_voice_activity_clip(self, filename, outfile_name):
-          print("Running VAD on " + str(filename))
+          logging.info("Running VAD on " + str(filename))
           try:
               v = VoiceActivityDetector(filename)
           except Exception as e:
-              print("ERROR at VAD " + str(filename) + " " + e)
+              logging.info("ERROR at VAD " + str(filename) + " " + e)
               pass
 
           # convert phase recognition array to second format
-          print("Converting windows to readible labels for " + str(filename))
+          logging.info("Converting windows to readible labels for " + str(filename))
           try:
               voice_activity_regions = v.convert_windows_to_readible_labels(v.detect_speech())
           except:
-              print("ERROR at convert windows to readable labels for file" + str(filename))
+              logging.debug("ERROR at convert windows to readable labels for file" + str(filename))
               raise Exception
 
           voice_activity_regions_array = []
@@ -120,9 +127,9 @@ class Audio_Detector():
 
 
           if voice_activity_regions_array != []:
-            print("No voice activity detecvted for this clip.")
+            logging.info("No voice activity detecvted for this clip.")
 
-            print("Finished creating array of voice activity regions")
+            logging.info("Finished creating array of voice activity regions")
 
             try:
                 #generate a vector of seconds, which is where the array should be cut
@@ -130,8 +137,8 @@ class Audio_Detector():
                 #creates a textfile.txt cut areas file in the wav directory
                 self.create_cutpoints_file(cut_areas, filename) 
             except Exception as e:
-                print("could not create a text file with cut areas")
-                print(e)
+                logging.debug("could not create a text file with cut areas")
+                logging.debug(e)
                 raise Exception
 
             if outfile_name == None: #allows you to specify an outfile name, if none is given creates a name
@@ -143,9 +150,9 @@ class Audio_Detector():
             try:
                 ffmpeg_calls.create_shortened_file(self.wav_directory, self.targetdirectory, file)
             except subprocess.CalledProcessError as e:
-                print(e)
+                logging.debug(e)
 
-            print("Created: " + self.targetdirectory + "/" + file)
+            logging.info("Created: " + self.targetdirectory + "/" + file)
 
           return file
 
@@ -181,20 +188,20 @@ class Audio_Detector():
     # activit.
     def pre_process_video_file(self, inputfile = "audio.mp4", outfile_name = None, randtoken = False, callnumber = 1):
 
-        print("input before file " + inputfile)
+        logging.info("input before file " + inputfile)
         #initialize inputs
         self.inputfile = inputfile
         self.source_file = self.initial_directory + "/" + self.inputfile
 
-        print("inputfile " + self.inputfile)
-        print("source file " + self.source_file)
+        logging.info("inputfile " + self.inputfile)
+        logging.info("source file " + self.source_file)
         # ------------ Find the length of your file -------------
         lengthoffile = int(ffmpeg_calls.retrieve_len(self.source_file))
 
-        print("Length of file " + str(lengthoffile))
+        logging.info("Length of file " + str(lengthoffile))
 
         if lengthoffile == 0:
-            print("ERROR: Length of file is 0" + inputfile)
+            logging.info("ERROR: Length of file is 0" + inputfile)
             raise Exception
 
         #TODO: create a different function for second time processing.
@@ -206,11 +213,11 @@ class Audio_Detector():
             try:
                 wav_encoded_files = self.shorten_given_file(self.source_file, lengthoffile=lengthoffile, cuttosize=2400) #shortens a given file and returns filepath
             except Exception as e:
-                print("ERROR: Can't shorten given file")
-                print(e)
+                logging.debug("ERROR: Can't shorten given file")
+                logging.debug(e)
                 raise Exception
                 
-        print("wav_encoded_files " + str(wav_encoded_files))
+        logging.info("wav_encoded_files " + str(wav_encoded_files))
 
         # Only do audio analysis on a file longer than 5 minutes.
         if lengthoffile > 300:
@@ -224,7 +231,7 @@ class Audio_Detector():
             for i in threads:
                 i.join()
         else:
-            print("File is short. Uploading the wav file without audio analysis")
+            logging.warning("File is short. Uploading the wav file without audio analysis")
             # Copies all the output.wav files to the Wav-Clips to be uploaded without further
             # processing for a file that is 5 or fewer minutes long.
             for filename in os.listdir(self.wav_directory):
