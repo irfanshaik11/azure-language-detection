@@ -1,3 +1,6 @@
+# FFMPEG is an open source audio/video file processing tool
+# This file contains all the calls to FFMPEG
+
 import subprocess
 import os
 
@@ -8,19 +11,21 @@ logging.basicConfig(filename='./logs/example.log',level=logging.DEBUG)
 #logging.info('So should this')
 #logging.warning('And this, too')
 
-
+#dtermines the length of an input file
 def retrieve_len(filepath):
-    logging.info("Retrieving length for " + filepath)
+    log.info("Retrieving length for " + filepath)
     temp = float(subprocess.check_output(["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(filepath)]))
     return int(temp)
 
+#Creates a shortened file given an input file, an output filename, and a text file containing cutpoints
+# This is used to cut multiple segments out of a video/audio file
 def create_shortened_file(cutpoints_file_directory, target_directory, outputfile, cutpoints_filename="cutpoints.txt"):
     cutpoints_filepath = cutpoints_file_directory + "/" + cutpoints_filename
     output_filepath = target_directory + "/" + outputfile
-    loggingog.info("Ran command")
-    logging.info("ffmpeg -f concat -i "+ cutpoints_filepath + " " + output_filepath + " -y")
+    log.info("Ran command")
+    log.info("ffmpeg -f concat -i "+ cutpoints_filepath + " " + output_filepath + " -y")
     subprocess.check_output(["ffmpeg", "-f", "concat", "-i", cutpoints_filepath, output_filepath, "-y"])
-
+#Dumps information on stream number and type to a text file given an input file
 def dump_streams_metadata(filepath, WAV_directory):
     # print("ffmpeg is calling" + filepath)
     # os.system("ffmpeg -i \"" + str(filepath) + "\" &>streams.txt")  #
@@ -33,6 +38,8 @@ def dump_streams_metadata(filepath, WAV_directory):
         w.write(str(l) + "\n")
     w.close()
 
+# Shortens a given file given a startime and a length
+# This is used to cut out one segment out of a video/audio file
 def shorten_file(end_directory, starttime, filename, cuttosize, i, outfile_name = None):
     strm = "0:" + i
 

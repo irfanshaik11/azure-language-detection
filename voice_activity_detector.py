@@ -1,3 +1,6 @@
+# Created by Alexander Usoltsev. Link to description: https://github.com/marsbroshok/VAD-python
+# This is an open source tool used to gnerate an array times where where people are speaking in an audio file
+
 import numpy as np
 import scipy.io.wavfile as wf
 import matplotlib.pyplot as plt
@@ -48,7 +51,7 @@ class VoiceActivityDetector():
         data_amplitude = self._calculate_amplitude(data)
         data_energy = data_amplitude ** 2
         return data_energy
-        
+    
     def _znormalize_energy(self, data_energy):
         energy_mean = np.mean(data_energy)
         energy_std = np.std(data_energy)

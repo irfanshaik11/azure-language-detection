@@ -6,6 +6,8 @@ import glob
 import cleanup
 import detection
 
+#SET THE DIRECTORIES TO BE USED BY THE PROJECT
+
 initial_directory = "./S3-Files" #directory containing mp4 files to be processed
 shortened_files_directory = "./Wav-Clips" #directory containing files to be uploaded to azure
 wav_files_directory = "./Wav-Encoded"
@@ -62,7 +64,7 @@ def db_update_item(table, key, field, val):
 	)
 
 def check_successful_detection(filename):
-    logging.info("Trying to retrieve object from DB")
+    log.info("Trying to retrieve object from DB")
     item = db_get_item(ASSET_TABLE, {'mat-id': filename})
     
     if item:
@@ -80,7 +82,7 @@ def download_file_from_s3(bucket_name, file_name, destination):
         return True
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == "404":
-            logging.info("The object does not exist.")
+            log.info("The object does not exist.")
         return False
 
 
@@ -97,13 +99,13 @@ def uploadResultJson():
     if len(result_json_files):
         for file in result_json_files:
             upload_file_to_s3(S3_RESULTS_BUCKET_NAME, file)
-            logging.info("uploaded " + file)
+            log.info("uploaded " + file)
     else:
-        logging.info("No results to upload")
+        log.info("No results to upload")
 
 
 def do_language_detection(filename):
-    logging.info("Doing detection on file " + filename)
+    log.info("Doing detection on file " + filename)
     results = []
 
     successful_detection = check_successful_detection(filename)
@@ -135,28 +137,28 @@ def processMessage(message):
         bucket_name = s3Event["s3"]["bucket"]["name"]
         destination = LOCAL_DOWNLOAD_DIR+file_uploaded_name.split("/")[-1]
 		
-        logging.info("Downloading file to ... " + destination)
+        log.info("Downloading file to ... " + destination)
 
         downloadSuccess = download_file_from_s3(bucket_name, file_uploaded_name, destination)
 
         try:
             if downloadSuccess:
-                logging.info("Downloaded file")
+                log.info("Downloaded file")
                 db_put_item(ASSET_TABLE, {
                     'mat-id': file_uploaded_name,
                     'Status': "Processing..."
                         })
-                logging.info("Created record in DB ... starting to process...")
+                log.info("Created record in DB ... starting to process...")
 
                 Results = do_language_detection(file_uploaded_name)
 				
-                logging.info("Finished Processing")
+                log.info("Finished Processing")
 
                 if Results:
                     #Updating the db_record
                     db_update_item(ASSET_TABLE, {'mat-id': file_uploaded_name}, 'Status', 'Finished')
                     db_update_item(ASSET_TABLE, {'mat-id': file_uploaded_name}, 'Results', Results)
-                    logging.info("Updated records in DB, successfully completed detection for " + file_uploaded_name)
+                    log.info("Updated records in DB, successfully completed detection for " + file_uploaded_name)
                     uploadResultJson()
                 else:
                     db_update_item(ASSET_TABLE, {'mat-id': file_uploaded_name}, 'Status', 'Failed')
@@ -164,13 +166,13 @@ def processMessage(message):
         except Exception as e:
             db_update_item(ASSET_TABLE, {'mat-id': file_uploaded_name}, 'Status', 'Failed')
             db_update_item(ASSET_TABLE, {'mat-id': file_uploaded_name}, 'Results', str(e))
-            logging.debug("Processing failed")
+            log.debug("Processing failed")
 
-        logging.debug("Processed message. Cleaning up temp files ...")
+        log.debug("Processed message. Cleaning up temp files ...")
         detection.clean_all_directories()
 
     else:
-        logging.warning("Unrelated message")
+        log.warning("Unrelated message")
         return False
 
     return True
@@ -186,7 +188,7 @@ def listenForSQS():
     response = SQS.get_queue_url(QueueName='Lang-Detection-Audio-Processing-Request')
     queue_url = response['QueueUrl']
 
-    logging.info("Listening for messages ...")
+    log.info("Listening for messages ...")
     while True:
         time.sleep(10)
         response = SQS.receive_message(
@@ -201,11 +203,11 @@ def listenForSQS():
             VisibilityTimeout=0,
             WaitTimeSeconds=0
         )
-        logging.info("Polled Queue ...")
+        log.info("Polled Queue ...")
 
         # print (response)
         if ('Messages' in response.keys()):
-            logging.info("Found a message!")
+            log.info("Found a message!")
             message = response['Messages'][0]
             receipt_handle = message['ReceiptHandle']
 
@@ -218,10 +220,10 @@ def listenForSQS():
             SQS.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
             # print(json.dumps(msg_body, indent=4))
         else:
-            logging.info("Message queue is empty!")
+            log.info("Message queue is empty!")
 
 
-logging.info("Started Program")
+log.info("Started Program")
 listenForSQS()
 
 

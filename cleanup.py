@@ -1,3 +1,5 @@
+# This file deletes the input file and all the interim files created
+# To avoid deleting files set DELETE_ALL_FILES_AFTER_PROCESSING to false
 import os
 import re
 import subprocess
@@ -26,7 +28,6 @@ def clean(initial_directory, shortened_files_directory, wav_files_directory, rep
     for i in os.listdir(wav_files_directory):
         os.remove(wav_files_directory + "/" + i)
 
-
     for i in os.listdir(wav_files_directory):
         os.remove(wav_files_directory + "/" + i)
 
@@ -38,7 +39,7 @@ def clean(initial_directory, shortened_files_directory, wav_files_directory, rep
 
 def remove_all_files_in_directory(directory):
     if not os.path.isdir(directory):
-        logging.warning("Directory does not exist")
+        log.warning("Directory does not exist")
         return
 
     for i in os.listdir(directory):
@@ -47,7 +48,7 @@ def remove_all_files_in_directory(directory):
 
 def copy_file(src, dest):
     if not os.path.isfile(src):
-        logging.warning("file does not exist")
+        log.warning("file does not exist")
         return
 
     shutil.copy2(src, dest)
